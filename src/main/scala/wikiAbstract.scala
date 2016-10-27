@@ -5,11 +5,14 @@ import java.io.BufferedInputStream
 import java.io.FileInputStream
 import java.io.IOException
 import org.apache.commons.compress.compressors.bzip2._
+import com.typesafe.scalalogging
 
 //import github.com.mythlee.wikiextract.{WikiDecoder, WikiPage}
 
 
 import org.backuity.clist._
+
+
 
 object Extract extends Command(name="extract", description = "Build an abstract for each wikipedia page.") {
 

@@ -18,8 +18,10 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-   "org.backuity.clist" %% "clist-core"   % "3.2.2",
-   "org.backuity.clist" %% "clist-macros" % "3.2.2" % "provided")
+    "org.backuity.clist" %% "clist-core"   % "3.2.2",
+    "org.backuity.clist" %% "clist-macros" % "3.2.2" % "provided",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
+)
 
 libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-compress" % "1.12",

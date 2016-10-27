@@ -1,10 +1,13 @@
 *.class
 *.log
-
+*.bz2
 # sbt specific
 .cache
+.gitignore
+.ensime
 .history
 .lib/
+.idea/
 dist/*
 target/
 lib_managed/
