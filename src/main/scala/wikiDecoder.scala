@@ -14,10 +14,55 @@ import com.typesafe.scalalogging.Logger
  *  In wikiPage, the wiki tempalte, macro will be removed, and trivial page will be annotated.
  */
 
-class WikiPage(title: String, wpage: String) {
+class WikiPage(title: String, wpage: String, abstEnable :Boolean) {
 
 
-  val page = remove_macro(wpage)
+  def this(t: String, w: String) = this (t, w, true)
+
+  var page: String = _
+
+  if (abstEnable) {
+    page = wiki_abstract(wpage)
+  }
+  page = remove_macro(page)
+  page = reformat(page)
+
+  val ignored = !(check_title(title) && check_page(page))
+
+  def reformat(p: String): String = {
+    val p2="""(?s)([\n\r]+)""".r replaceAllIn(p, "")
+    p2
+  }
+
+  def wiki_abstract(wp: String) : String = {
+
+    val hReg="""==.+==""".r
+
+    val m = hReg findFirstMatchIn wp
+
+    if (m.isDefined) wp.substring(0, m.get.start)
+    else wp
+  }
+
+
+  /**
+    *
+    * @param page raw text without wikipedia macro
+    * @return false if it is a redirect page.
+    */
+
+  def check_page(page : String) : Boolean = {
+
+    val iRegList = List("""'(may|could|can) (also ){0,1}refer to[\s]*?:""".r)
+
+    val iPefixList = List("#REDIRECT")
+
+    if (iPefixList exists (w=>page.startsWith(w))) return false
+
+    if (iRegList exists (w => w.findFirstIn(page.substring(0, 200 min page.length)).isDefined)) return false
+
+    true
+  }
 
   /**
     *
@@ -26,26 +71,53 @@ class WikiPage(title: String, wpage: String) {
     */
 
   def remove_macro(wpage: String) : String = {
-    val repList = List(("""\<\!--.*?--\>""".r, ""),
-      ("""\<ref[^\>]*?(?<!/)\>.*?\</ref\>""".r, ""),
-      ("""\<math[^\>]*\>[^\<]*?\</math\>""".r, ""),
-      ("""\<[^\>]+\>""".r, ""),
-      ("""{{[Nn]ihongo\|([^|{}}]+?)\|[^{}]+?}}""".r, ""),
+    val repList = List(("""(?s)\<\!--.*?--\>""".r, ""),
+      ("""(?s)\<ref[^\>]*?/\>""".r, ""),
+      ("""(?s)\<ref.*?\>.*?\</ref\>""".r, ""),
+      ("""(?s)\<math[^\>]*\>[^\<]*?\</math\>""".r, ""),
+      ("""(?s)\<[^\>]+\>""".r, ""),
+      ("""\{\{[Nn]ihongo(\|[^|\{\}]+?){2}\}\}""".r, ""),
       ("""\[\[(File|Image).*?\|.+?\|.*?(\[\[.+?\]\].*?)*\]\]""".r, ""),
       ("""\"""".r, ""),
-      ("""\(.*?\)""".r, ""),
-      ("""\[\[([^|]+?)\]\]""".r, "$1"),
-      ("""\[\[.+?\|(.+?)\]\]""".r, "$1"),
+      ("""(?s)\(.*?\)""".r, ""),
+      ("""(?s)\[\[([^|]+?)\]\]""".r, "$1"),
+      ("""(?s)\[\[.+?\|(.+?)\]\]""".r, "$1"),
       ("""'''(.+?)'''""".r, "$1"),
-      ("""''(.+?)''""".r, "$1")
+      ("""''(.+?)''""".r, "$1"),
+      ("""======(.+?)======""".r, "$1"),
+      ("""=====(.+?)=====""".r, "$1"),
+      ("""====(.+?)====""".r, "$1"),
+      ("""===(.+?)===""".r, "$1"),
+      ("""==(.+?)==""".r, "$1")
     )
 
-    val recuse_repList = List(("""'{{[^{}]+?}}""".r, ""),
-      ("""(?<!{){(?!{)(.+?)(?<!})}(?!})""".r, "$1"),
-      ("""{\|[^{}]+?\|}""".r, "")
+    val recuse_repList = List(("""(?s)\{\{[^\{\}]+?\}\}""".r, ""),
+      ("""(?s)(?<!\{)\{(?!\{)(.+?)(?<!\})\}(?!\})""".r, "$1"),
+      ("""(?s)\{\|[^\{\}]+?\|\}""".r, "")
     )
 
-    return wpage
+    var page = wpage
+    var Flag = true
+    do {
+
+      /*var page1=page
+      for ((rr, ss) <- recuse_repList) {
+        page1=rr.replaceAllIn(page1, ss)
+      }*/
+      val page1=recuse_repList.foldLeft(page)((p, rs) => rs._1.replaceAllIn(p, rs._2))
+      if (page1==page) Flag=false
+      else Flag=true
+      page=page1
+    } while(Flag)
+
+    /*
+    for ((rr, ss) <- repList) {
+      page = rr.replaceAllIn(page, ss)
+    }
+*/
+    page = repList.foldLeft(page)((p, rs) => rs._1.replaceAllIn(p, rs._2))
+
+    page
 
   }
 
@@ -72,7 +144,9 @@ class WikiPage(title: String, wpage: String) {
 }
 
 
-class WikiDecoder(bzIn: BZip2CompressorInputStream) {
+class WikiDecoder(bzIn: BZip2CompressorInputStream, abstEnable: Boolean) {
+
+  def this(bzIn: BZip2CompressorInputStream) = this(bzIn, true)
 
   val wikiIn = new XMLEventReader(Source.fromInputStream(bzIn))
 
@@ -128,7 +202,7 @@ class WikiDecoder(bzIn: BZip2CompressorInputStream) {
       event = wikiIn.next()
     }
     wikiIn.find(matchEnd(_, "page"))
-    return Option(new WikiPage(title, page))
+    return Option(new WikiPage(title, page, abstEnable))
 
   }
 

@@ -46,9 +46,19 @@ object WikiAbstractMain {
     val bzIn=new BZip2CompressorInputStream(new BufferedInputStream(new FileInputStream(infile)))
     val wiki_decoder = new WikiDecoder(bzIn)
 
-    println(wiki_decoder.nextPage.get)
-    println(wiki_decoder.nextPage.get)
+    for (i <- 1 until pageBegin) {
+      wiki_decoder.nextPage
+    }
 
+
+    var page=wiki_decoder.nextPage
+    var idx=pageBegin
+
+    while(idx != pageEnd && page.isDefined) {
+      if (!page.get.ignored) println(page.get)
+      page=wiki_decoder.nextPage
+      idx+=1
+    }
 
     // Exit the program without error and warning.
     try {
