@@ -4,17 +4,19 @@ package github.com.mythlee.wikiextract
 import java.io.BufferedInputStream
 import java.io.FileInputStream
 import java.io.IOException
+
 import org.apache.commons.compress.compressors.bzip2._
-import com.typesafe.scalalogging
+import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.LazyLogging
+import org.apache.log4j.BasicConfigurator
 
 //import github.com.mythlee.wikiextract.{WikiDecoder, WikiPage}
 
 
 import org.backuity.clist._
 
-
-
 object Extract extends Command(name="extract", description = "Build an abstract for each wikipedia page.") {
+
 
   var pagebeg = opt[Int](default=1, name="page-begin")
   var pageend = opt[Int](default=0, name="page-end")
@@ -22,8 +24,10 @@ object Extract extends Command(name="extract", description = "Build an abstract 
 
 }
 
-object WikiAbstractMain {
+object WikiAbstractMain extends LazyLogging {
   val usage ="""Usage: wikiAbstract [--page-begin num] [--page-end num] extract enwiki_pages_xml.bz2"""
+
+  BasicConfigurator.configure()
 
   def main(args: Array[String]) {
 
@@ -43,6 +47,9 @@ object WikiAbstractMain {
 
   }
   def wikiExtract(infile: String, pageBegin: Int, pageEnd: Int): Unit = {
+
+    logger.info(s"Start parsing and analysis wikipedia page in File $infile")
+
     val bzIn=new BZip2CompressorInputStream(new BufferedInputStream(new FileInputStream(infile)))
     val wiki_decoder = new WikiDecoder(bzIn)
 
@@ -54,12 +61,17 @@ object WikiAbstractMain {
     var page=wiki_decoder.nextPage
     var idx=pageBegin
 
-    while(idx != pageEnd && page.isDefined) {
-      if (!page.get.ignored) println(page.get)
-      page=wiki_decoder.nextPage
-      idx+=1
-    }
+    if (page.isDefined) {
+      do {
+        if (!page.get.ignored) println(page.get)
+        page = wiki_decoder.nextPage
+        idx += 1
+      } while (idx != pageEnd && page.isDefined)
 
+      logger.info(s"Finish extraction from page $pageBegin to $idx ")
+    } else {
+      logger.info(s"Can not extract pages from $pageBegin")
+    }
     // Exit the program without error and warning.
     try {
       wiki_decoder.stop

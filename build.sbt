@@ -14,7 +14,8 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
     "edu.emory.mathcs.nlp" % "nlp4j-api" % "1.1.3",
     "edu.emory.mathcs.nlp" % "nlp4j-cli" % "1.1.3",
-    "edu.emory.mathcs.nlp" % "nlp4j-english" % "1.1.3"
+    "edu.emory.mathcs.nlp" % "nlp4j-english" % "1.1.3",
+    "com.google.guava" % "guava" % "20.0"
 )
 
 libraryDependencies ++= Seq(
