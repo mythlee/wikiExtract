@@ -28,9 +28,14 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-compress" % "1.12",
   "org.scala-lang.modules" %% "scala-xml" % "1.0.6",
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-  "org.scala-lang.modules" %% "scala-swing" % "1.0.2"
+  "org.scala-lang.modules" %% "scala-swing" % "1.0.2",
+  "io.spray" %%  "spray-json" % "1.3.2"
 )
 
 initialCommands := "import github.com.mythlee.wikiextract._"
+
+fork in run := true
+
+javaOptions in run += "-Xmx8G"
 
 

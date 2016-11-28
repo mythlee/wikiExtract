@@ -14,7 +14,7 @@ import com.typesafe.scalalogging.Logger
  *  In wikiPage, the wiki tempalte, macro will be removed, and trivial page will be annotated.
  */
 
-class WikiPage(title: String, wpage: String, abstEnable :Boolean) {
+class WikiPage(val title: String, val wpage: String, val abstEnable :Boolean) {
 
 
   def this(t: String, w: String) = this (t, w, true)
@@ -30,8 +30,9 @@ class WikiPage(title: String, wpage: String, abstEnable :Boolean) {
   val ignored = !(check_title(title) && check_page(page))
 
   def reformat(p: String): String = {
-    val p2="""(?s)([\n\r]+)""".r replaceAllIn(p, "")
-    p2
+    val p2="""(?s)([\n\r]+)""".r replaceAllIn(p, " ")
+    val p3="""(?s)\s{2,}""".r replaceAllIn(p2, " ")
+    p3
   }
 
   def wiki_abstract(wp: String) : String = {
@@ -55,11 +56,13 @@ class WikiPage(title: String, wpage: String, abstEnable :Boolean) {
 
     val iRegList = List("""'(may|could|can) (also ){0,1}refer to[\s]*?:""".r)
 
-    val iPefixList = List("#REDIRECT")
+    val iPefixList = List("""#REDIRECT|#Redirect|#redirect""".r)
 
-    if (iPefixList exists (w=>page.startsWith(w))) return false
+    if (iPefixList exists (w=>w.findPrefixOf(page).isDefined)) return false
 
     if (iRegList exists (w => w.findFirstIn(page.substring(0, 200 min page.length)).isDefined)) return false
+
+    if (page.length<80) return false
 
     true
   }
@@ -79,7 +82,7 @@ class WikiPage(title: String, wpage: String, abstEnable :Boolean) {
       ("""\{\{[Nn]ihongo(\|[^|\{\}]+?){2}\}\}""".r, ""),
       ("""\[\[(File|Image).*?\|.+?\|.*?(\[\[.+?\]\].*?)*\]\]""".r, ""),
       ("""\"""".r, ""),
-      ("""(?s)\(.*?\)""".r, ""),
+     // ("""(?s)\(.*?\)""".r, ""),
       ("""(?s)\[\[([^|]+?)\]\]""".r, "$1"),
       ("""(?s)\[\[.+?\|(.+?)\]\]""".r, "$1"),
       ("""'''(.+?)'''""".r, "$1"),
@@ -88,13 +91,17 @@ class WikiPage(title: String, wpage: String, abstEnable :Boolean) {
       ("""=====(.+?)=====""".r, "$1"),
       ("""====(.+?)====""".r, "$1"),
       ("""===(.+?)===""".r, "$1"),
-      ("""==(.+?)==""".r, "$1")
+      ("""==(.+?)==""".r, "$1"),
+      ("""\.([^.\s])""".r, ". $1"),
+      ("""&nbsp""".r, " ")
     )
 
     val recuse_repList = List(("""(?s)\{\{[^\{\}]+?\}\}""".r, ""),
       ("""(?s)(?<!\{)\{(?!\{)(.+?)(?<!\})\}(?!\})""".r, "$1"),
       ("""(?s)\{\|[^\{\}]+?\|\}""".r, "")
     )
+
+    //val repairList = List(("""(\.)[^\.]""".r, ". "))
 
     var page = wpage
     var Flag = true
@@ -183,27 +190,38 @@ class WikiDecoder(bzIn: BZip2CompressorInputStream, abstEnable: Boolean) {
     }
   }
 
-  def nextPage: Option[WikiPage] ={
+
+  def nextPage(skip: Boolean): Option[WikiPage] ={
 
     //var event: XMLEvent =
     val e1=wikiIn.find(matchStart(_, "page"))
     if (e1.isEmpty) return None
+    if (skip == true) {
+      wikiIn.find(matchEnd(_, "page"))
+      return None
+    }
     wikiIn.find(matchStart(_, "title"))
     val title = getText(wikiIn.find(matchText(_)).get)
     wikiIn.find(matchStart(_, "revision"))
     wikiIn.find(matchStart(_, "text"))
     var event = wikiIn.find(matchText(_)).get
     var page = ""
-    while (!matchEnd(event, "text")) {
+    var state=0
+    while (!matchEnd(event, "text") && state==0) {
       event match {
-        case EvText(t) => page += t
-        case EvEntityRef(n) => page += entMap(n)
+        case EvText(t) => if (state==0) page += t
+        case EvEntityRef(n) => if(state==0) page += entMap(n)
+        case others => state += 1
       }
+
       event = wikiIn.next()
     }
     wikiIn.find(matchEnd(_, "page"))
+
     return Option(new WikiPage(title, page, abstEnable))
 
   }
+
+  def nextPage : Option[WikiPage] = nextPage(false)
 
 }
